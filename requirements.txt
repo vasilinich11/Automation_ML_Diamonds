@@ -8,3 +8,4 @@ psutil>=7.0,<8.0
 matplotlib>=3.9,<3.11
 pytest>=8.4,<9.0
 httpx>=0.28,<0.29
+pydantic-settings>=2.6,<3.0
