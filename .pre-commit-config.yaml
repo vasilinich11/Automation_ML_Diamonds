@@ -1,0 +1,67 @@
+# Хуки запускаются автоматически на `git commit` (и тесты на `git push`).
+# Установка:   poetry run pre-commit install
+# Ручной запуск по всему репозиторию:   poetry run pre-commit run --all-files
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+minimum_pre_commit_version: "4.0.0"
+
+repos:
+  # Базовая гигиена файлов
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: debug-statements
+
+  # Ruff: линтер (pyflakes, pycodestyle, isort, bugbear, bandit, pydocstyle, ...) и форматтер
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.10
+    hooks:
+      - id: ruff-check
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  # Poetry: pyproject.toml валиден, poetry.lock синхронизирован с pyproject.toml
+  - repo: https://github.com/python-poetry/poetry
+    rev: 2.5.1
+    hooks:
+      - id: poetry-check
+        args: [--lock]
+
+  # requirements.txt всегда сгенерирован из poetry.lock (для установки через pip)
+  - repo: https://github.com/python-poetry/poetry-plugin-export
+    rev: 1.10.1
+    hooks:
+      - id: poetry-export
+        args: [-f, requirements.txt, -o, requirements.txt, --without-hashes]
+
+  # Хуки, которым нужны зависимости проекта, запускаются в .venv через Poetry
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (strict)
+        entry: poetry run mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+        require_serial: true
+
+      - id: pytest
+        name: pytest
+        entry: poetry run pytest -q
+        language: system
+        types: [python]
+        pass_filenames: false
+        stages: [pre-push]

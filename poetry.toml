@@ -1,0 +1,6 @@
+# Локальные настройки Poetry для этого репозитория (коммитятся в git).
+# Виртуальное окружение создаётся внутри проекта в .venv/ (каталог в .gitignore),
+# поэтому IDE, pre-commit и Makefile находят его по одному и тому же пути.
+[virtualenvs]
+create = true
+in-project = true

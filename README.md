@@ -1,18 +1,21 @@
 # Automation ML Diamonds
 
-[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
+[![Poetry](https://img.shields.io/badge/deps-Poetry-60A5FA)](https://python-poetry.org/)
+[![Ruff](https://img.shields.io/badge/lint-ruff-D7FF64)](https://docs.astral.sh/ruff/)
+[![mypy](https://img.shields.io/badge/types-mypy%20strict-2A6DB2)](https://mypy-lang.org/)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-FAB040)](https://pre-commit.com/)
 [![FastAPI](https://img.shields.io/badge/API-FastAPI-009688)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/tests-pytest-green)](https://docs.pytest.org/)
 [![Docker](https://img.shields.io/badge/docker-compose-blue)](https://docs.docker.com/compose/)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 MLOps-проект для предсказания стоимости бриллиантов.
 
-Текущая версия: `1.0.0`
+Текущая версия: `1.1.0` (единственный источник версии: `pyproject.toml`).
 
 Проект демонстрирует воспроизводимый ML workflow для табличной задачи регрессии: предсказание цены бриллианта (`price`) по данным Kaggle Diamonds Dataset.
 
-Основной акцент сделан на понятной архитектуре, стабильном локальном запуске, автоматизированных тестах, Docker, CI/CD, monitoring и прозрачной структуре репозитория.
+Основной акцент сделан на понятной архитектуре, стабильном локальном запуске, автоматизированных тестах, Docker, CI/CD, monitoring и прозрачной структуре репозитория. В версии 1.1.0 код приведён к production-стандартам, зависимости переведены на Poetry, подключены линтеры и pre-commit, а виртуальное окружение интегрировано в репозиторий.
 
 ## Бизнес-задача
 
@@ -34,7 +37,7 @@ MLOps-проект для предсказания стоимости брилл
 
 Датасет: [Kaggle Diamonds Dataset](https://www.kaggle.com/datasets/shivam2503/diamonds)
 
-Презентация - https://drive.google.com/file/d/1yhTzTyjb7gmj4y4bQLWzS0v7sFHl4q5n/view?usp=sharing 
+Презентация - https://drive.google.com/file/d/1yhTzTyjb7gmj4y4bQLWzS0v7sFHl4q5n/view?usp=sharing
 
 ## Почему выбран Diamonds Dataset
 
@@ -94,75 +97,131 @@ flowchart LR
   - CPU/RAM/disk usage через `psutil`.
 - Тесты на небольших synthetic DataFrame, поэтому полный Kaggle dataset для проверки не нужен.
 - Docker и Docker Compose.
-- GitHub Actions workflow для тестов и Docker build.
+- GitHub Actions workflow для линтеров, тестов и Docker build.
+
+## Production-стандарты кода
+
+| Было | Стало |
+| --- | --- |
+| Пакет с именем `src`, импорты `from src.x import ...` | src-layout: устанавливаемый пакет `src/diamonds_mlops` |
+| Пути и гиперпараметры разбросаны константами по модулям | `config.py`: единые настройки на `pydantic-settings`, переопределяются переменными `DIAMONDS_*` |
+| `print` в модулях | `logging` с единым форматом, настройка только в точках входа |
+| Модель загружается при импорте `app.py` в глобальную переменную | Application factory `create_app()`, модель загружается в `lifespan` и хранится в `app.state` |
+| Две реализации метрик инфраструктуры (`monitoring.py` и `infrastructure_monitoring.py`) | Одна реализация в `monitoring.py` |
+| Разрозненные `__main__` и `run_pipeline.py` | Единый CLI `diamonds <команда>` |
+| `ValueError` без типа, результаты в виде голых кортежей и словарей | `DataValidationError`, `NamedTuple`/`TypedDict`, строгая типизация (`mypy --strict`) |
+| Схемы API внутри `app.py` | `api/schemas.py` и `api/app.py` |
+| Тесты пишут артефакты в каталог проекта | Изолированные фикстуры, артефакты во временном каталоге теста |
+
+Метрики модели после рефакторинга не изменились (на sample dataset RMSE 589.59, R2 0.9631).
 
 ## Структура проекта
 
 ```text
 .
-|-- data/
-|   |-- raw/
-|   `-- processed/
-|-- src/
-|   |-- app.py
-|   |-- data_processing.py
-|   |-- infrastructure_monitoring.py
-|   |-- model_training.py
-|   `-- monitoring.py
-|-- tests/
-|   |-- test_api.py
-|   |-- test_data.py
-|   |-- test_model.py
-|   `-- test_monitoring.py
+|-- src/diamonds_mlops/          # устанавливаемый Python-пакет
+|   |-- api/
+|   |   |-- app.py               # FastAPI: create_app(), endpoint-ы
+|   |   `-- schemas.py           # pydantic-схемы запросов и ответов
+|   |-- cli.py                   # CLI `diamonds`
+|   |-- config.py                # настройки (pydantic-settings, DIAMONDS_*)
+|   |-- data_processing.py       # ETL: load, validate, clean, split
+|   |-- features.py              # схема данных и feature engineering
+|   |-- logging_config.py        # единый формат логов
+|   |-- model_training.py        # обучение, метрики, save/load модели
+|   |-- monitoring.py            # baseline, drift, degradation, CPU/RAM/disk
+|   |-- pipeline.py              # оркестрация ETL + обучения
+|   `-- visualization.py         # графики для отчёта
+|-- tests/                       # pytest: unit, API, CLI, конфигурация
+|-- data/{raw,processed}/        # данные (CSV не коммитятся)
+|-- models/                      # артефакты модели (не коммитятся)
+|-- reports/{figures,monitoring}/
 |-- docker/
-|   |-- Dockerfile
+|   |-- Dockerfile               # multi-stage сборка на Poetry
 |   `-- prometheus.yml
-|-- .github/workflows/
-|   `-- ci-cd.yml
-|-- models/
-|-- reports/
-|   |-- figures/
-|   `-- monitoring/
-|-- presentation/
-|   `-- presentation.md
-|-- run_pipeline.py
-|-- docker-compose.yml
-|-- requirements.txt
-`-- README.md
+|-- .github/workflows/ci-cd.yml  # lint + tests (3.11-3.13) + docker
+|-- .vscode/                     # настройки IDE под .venv проекта
+|-- pyproject.toml               # метаданные, зависимости, ruff, mypy, pytest, coverage
+|-- poetry.lock                  # зафиксированные версии всех зависимостей
+|-- poetry.toml                  # .venv внутри проекта
+|-- .python-version              # версия Python для pyenv/IDE
+|-- .pre-commit-config.yaml      # git-хуки качества кода
+|-- .env.example                 # пример переменных окружения
+|-- requirements.txt             # генерируется из poetry.lock для pip
+|-- Makefile                     # короткие команды
+`-- docker-compose.yml
 ```
 
 ## Быстрый старт
 
-Создать и активировать виртуальное окружение на Windows:
+Нужны Python 3.11-3.13 и [Poetry](https://python-poetry.org/docs/#installation) 2.x:
 
 ```bash
-python -m venv .venv
-.venv\Scripts\activate
+pipx install poetry
 ```
 
-Установить зависимости:
+Создать окружение и подключить git-хуки:
 
 ```bash
-pip install -r requirements.txt
+poetry install                 # создаёт .venv/ в корне проекта и ставит зависимости из poetry.lock
+poetry run pre-commit install  # подключает git-хуки (pre-commit и pre-push)
 ```
+
+То же самое через Makefile: `make install`. Список всех команд: `make help`.
 
 Запустить полный ML pipeline:
 
 ```bash
-python run_pipeline.py
+poetry run diamonds pipeline
 ```
 
-Ожидаемый вывод:
+Ожидаемый вывод (после строк лога):
 
-```text
-Pipeline completed
-rmse: 589.5855
-mae: 483.1370
-r2: 0.9631
-mape: 7.0597
+```json
+{
+  "rmse": 589.5855030260883,
+  "mae": 483.1369603844396,
+  "r2": 0.9631170911086028,
+  "mape": 7.059739162247623
+}
 ```
 
 Если вместо sample dataset использовать полный Kaggle CSV, значения метрик могут измениться.
+
+## Виртуальное окружение
+
+Окружение полностью описано файлами в репозитории, поэтому у всех участников, в CI и в Docker оно одинаковое:
+
+- `pyproject.toml` хранит прямые зависимости с допустимыми диапазонами версий, разбитые на группы:
+  - `main`: всё, что нужно API и пайплайну в production;
+  - `viz`: `matplotlib` для графиков отчёта (в Docker-образ не попадает);
+  - `dev`: `pytest`, `pytest-cov`, `ruff`, `mypy`, `pre-commit`, стабы типов.
+- `poetry.lock` фиксирует точные версии всех транзитивных зависимостей и коммитится в git.
+- `poetry.toml` включает `virtualenvs.in-project`, поэтому окружение всегда лежит в `.venv/` в корне проекта. Сам каталог `.venv/` в `.gitignore`: в git хранится описание окружения, а не установленные пакеты.
+- `.python-version` задаёт версию интерпретатора для pyenv и IDE.
+- `.vscode/` подхватывает `.venv`, запускает ruff и mypy из окружения проекта.
+- `requirements.txt` генерируется из `poetry.lock` хуком pre-commit для тех, кто ставит зависимости через pip.
+
+Полезные команды:
+
+```bash
+poetry env info                # где лежит окружение и какой Python используется
+poetry env use python3.12      # пересоздать окружение на другой версии Python
+eval $(poetry env activate)    # активировать .venv в текущем shell (Windows: .venv\Scripts\activate)
+poetry add <пакет>             # добавить runtime-зависимость
+poetry add --group dev <пакет> # добавить dev-зависимость
+poetry install --only main     # только runtime-зависимости (как в Docker)
+```
+
+## Конфигурация
+
+Все пути и гиперпараметры находятся в `src/diamonds_mlops/config.py` и переопределяются переменными окружения с префиксом `DIAMONDS_` или файлом `.env` (пример: `.env.example`):
+
+```bash
+DIAMONDS_N_ESTIMATORS=300 DIAMONDS_LOG_LEVEL=DEBUG poetry run diamonds train
+```
+
+Относительные пути считаются от `DIAMONDS_PROJECT_ROOT` (по умолчанию корень репозитория).
 
 ## Подготовка датасета
 
@@ -177,13 +236,16 @@ data/raw/diamonds.csv
 ## Запуск ETL
 
 ```bash
-python -m src.data_processing
+poetry run diamonds prepare-data
 ```
 
 Ожидаемый вывод:
 
-```text
-Saved processed train/test data: train=400, test=100
+```json
+{
+  "train_rows": 400,
+  "test_rows": 100
+}
 ```
 
 Создаваемые файлы:
@@ -200,13 +262,13 @@ Saved processed train/test data: train=400, test=100
 - Загрузка diamonds dataset из `data/raw/diamonds.csv`.
 - Источник данных: [Kaggle Diamonds Dataset](https://www.kaggle.com/datasets/shivam2503/diamonds).
 - Если CSV отсутствует, создается deterministic sample dataset для воспроизводимого локального запуска.
-- На этапе validation проверяются обязательные колонки, непустой датасет и числовые типы данных для numeric features.
+- На этапе validation проверяются обязательные колонки, непустой датасет и числовые типы данных для numeric features. Ошибки выбрасываются как `DataValidationError`.
 
 ### Transform
 
 - Удаляются дубликаты и строки с пропусками в обязательных колонках.
 - Отфильтровываются некорректные физические значения: неположительные `carat`, `price`, `x`, `y`, `z`, `depth`, `table`.
-- Добавляется feature engineering:
+- Добавляется feature engineering (`features.py`, общий для обучения и API):
   - `volume = x * y * z`;
   - `density = carat / (volume + 0.001)`;
   - `depth_to_width = depth / (x + 0.001)`.
@@ -226,19 +288,10 @@ Saved processed train/test data: train=400, test=100
 ## Обучение модели
 
 ```bash
-python -m src.model_training
+poetry run diamonds train
 ```
 
-Ожидаемый вывод - JSON с реальными метриками:
-
-```json
-{
-  "rmse": 589.5855030260883,
-  "mae": 483.1369603844394,
-  "r2": 0.9631170911086028,
-  "mape": 7.059739162247622
-}
-```
+Ожидаемый вывод: JSON с реальными метриками (как в разделе «Быстрый старт»).
 
 Создаваемые файлы:
 
@@ -251,7 +304,7 @@ python -m src.model_training
 Графики для отчета находятся в `reports/figures/`. Их можно пересоздать командой:
 
 ```bash
-python -m src.visualization
+poetry run diamonds figures
 ```
 
 ![Распределение цены бриллиантов](reports/figures/price_distribution.png)
@@ -271,7 +324,9 @@ python -m src.visualization
 Запуск API локально:
 
 ```bash
-uvicorn src.app:app --reload
+poetry run diamonds serve --reload
+# или напрямую
+poetry run uvicorn diamonds_mlops.api.app:app --reload
 ```
 
 Документация Swagger доступна по адресу:
@@ -282,7 +337,7 @@ http://127.0.0.1:8000/docs
 
 Endpoint-ы:
 
-- `GET /` - базовая информация об API.
+- `GET /` - базовая информация об API и версия.
 - `GET /health` - статус сервиса, статус модели и infrastructure metrics.
 - `POST /predict` - предсказание цены бриллианта.
 - `GET /model/info` - путь к модели, список признаков и сохраненные метрики.
@@ -307,31 +362,48 @@ Endpoint-ы:
 
 ```json
 {
-  "predicted_price": 4200.25,
+  "predicted_price": 4542.95,
   "message": "Prediction completed successfully."
 }
 ```
 
-Если модель еще не обучена, `/predict` вернет HTTP 503 с подсказкой запустить обучение. При этом импорт FastAPI-приложения не падает без файла модели.
+Если модель еще не обучена, `/predict` вернет HTTP 503 с подсказкой запустить обучение. Невалидный запрос всегда получает HTTP 422, даже без модели. Модель загружается один раз при старте приложения, а если её ещё не было, подгружается при первом запросе после обучения.
+
+## Качество кода: линтеры и pre-commit
+
+Конфигурация всех инструментов находится в `pyproject.toml` и `.pre-commit-config.yaml`.
+
+| Инструмент | Что проверяет |
+| --- | --- |
+| `ruff check` | стиль (pycodestyle), ошибки (pyflakes), сортировка импортов (isort), bugbear, безопасность (bandit), docstrings (pydocstyle), pylint, pandas-vet, numpy и др. |
+| `ruff format` | форматирование кода (совместимо с black) |
+| `mypy --strict` | статическая типизация (плагин pydantic, `pandas-stubs`, `types-psutil`) |
+| `pre-commit-hooks` | пробелы в конце строк, перевод строки в конце файла, LF, валидность YAML/TOML/JSON, крупные файлы, конфликты слияния, приватные ключи, забытые `breakpoint()` |
+| `poetry check --lock` | `pyproject.toml` валиден, `poetry.lock` синхронизирован |
+| `poetry export` | `requirements.txt` пересобирается из `poetry.lock` |
+| `pytest` | запускается на `git push` (стадия `pre-push`) |
+
+Хуки выполняются автоматически при `git commit`. Ручной запуск по всему репозиторию:
+
+```bash
+poetry run pre-commit run --all-files                      # или: make lint
+poetry run ruff check --fix . && poetry run ruff format .  # или: make format
+poetry run mypy                                            # или: make typecheck
+```
 
 ## Тестирование
 
-Запуск всех тестов:
+Запуск всех тестов с покрытием:
 
 ```bash
-pytest -v
+poetry run pytest --cov   # или: make test
 ```
 
 Текущий ожидаемый результат:
 
 ```text
-18 passed
-```
-
-Опциональная команда для coverage, если установлен `pytest-cov`:
-
-```bash
-pytest --cov=src --cov-report=term-missing
+38 passed
+Required test coverage of 85.0% reached. Total coverage: 95.77%
 ```
 
 ## Monitoring
@@ -339,7 +411,7 @@ pytest --cov=src --cov-report=term-missing
 Проверка infrastructure metrics:
 
 ```bash
-python -m src.infrastructure_monitoring
+poetry run diamonds monitor
 ```
 
 Пример вывода:
@@ -352,7 +424,7 @@ python -m src.infrastructure_monitoring
 }
 ```
 
-Monitoring в проекте легкий и встроенный. Он показывает baseline metrics, drift checks, degradation checks и состояние ресурсов без подключения внешних сервисов.
+Monitoring в проекте легкий и встроенный. Он показывает baseline metrics, drift checks, degradation checks и состояние ресурсов без подключения внешних сервисов. Пороги дрейфа и деградации задаются в настройках (`DIAMONDS_DRIFT_THRESHOLD` и др.).
 
 ## Docker
 
@@ -368,10 +440,10 @@ docker compose build
 docker compose up
 ```
 
-Ожидаемое поведение:
+Образ собирается в два этапа:
 
-- image устанавливает Python-зависимости;
-- во время build запускаются ETL и model training, поэтому внутри image есть model artifact;
+- `builder` ставит Poetry, создаёт `/app/.venv` строго по `poetry.lock` (только группа `main`) и обучает модель, поэтому внутри image есть model artifact;
+- `runtime` содержит только `.venv`, исходники и артефакты модели, без Poetry и dev-зависимостей; процесс работает от непривилегированного пользователя `app`;
 - API запускается на порту `8000`;
 - Swagger доступен по адресу `http://127.0.0.1:8000/docs`.
 
@@ -383,47 +455,51 @@ GitHub Actions workflow находится здесь:
 .github/workflows/ci-cd.yml
 ```
 
-Workflow выполняет:
+Workflow выполняет три job-а:
 
-1. checkout репозитория;
-2. настройку Python;
-3. pip dependency cache;
-4. установку зависимостей;
-5. compile check для `src` и `tests`;
-6. `python -m pytest -v`;
-7. Docker image build.
+1. `lint`: установка Poetry, `poetry check --lock`, `poetry install`, все хуки pre-commit (ruff, mypy, poetry, гигиена файлов);
+2. `test`: матрица Python 3.11, 3.12, 3.13, `pytest` с покрытием, coverage.xml сохраняется как artifact;
+3. `docker`: сборка image и smoke-тест контейнера (`/health` и `/predict`).
 
 Deploy, cloud integrations и secrets не добавлены специально: для проекта выбран простой и стабильный workflow без внешней инфраструктуры.
 
 ## Git workflow
 
-Для работы с репозиторием использовался стандартный Git workflow:
+Для работы с репозиторием используется стандартный Git workflow с feature-ветками:
 
 ```bash
-git status
+git checkout -b feature/<название>
 git add .
-git commit -m "..."
-git push origin main
+git commit -m "..."                   # перед коммитом автоматически запускаются хуки pre-commit
+git push origin feature/<название>    # перед push запускаются тесты
 ```
 
-Эти команды позволяют проверить состояние рабочей директории, добавить изменения, зафиксировать их в истории и отправить проект в GitHub-репозиторий.
+После push открывается Pull Request в `main`, где CI повторяет все проверки.
 
 ## Решение частых проблем
 
 ### `ModuleNotFoundError`
 
-Установить зависимости в активном окружении:
+Установить зависимости в окружение проекта и запускать команды через `poetry run`:
 
 ```bash
-pip install -r requirements.txt
+poetry install
 ```
+
+### `poetry: command not found`
+
+Установить Poetry: `pipx install poetry` (или по [официальной инструкции](https://python-poetry.org/docs/#installation)).
+
+### Коммит отклонён хуком pre-commit
+
+Часть хуков (ruff, форматирование, пробелы) исправляет файлы автоматически: нужно выполнить `git add` и повторить коммит. Ошибки mypy и ruff, которые нельзя исправить автоматически, выводятся с указанием файла и строки.
 
 ### `/predict` возвращает HTTP 503
 
 Сначала обучить модель:
 
 ```bash
-python -m src.model_training
+poetry run diamonds train
 ```
 
 ### Нет Kaggle dataset
@@ -438,21 +514,12 @@ python -m src.model_training
 docker compose build
 ```
 
-## Скриншоты для документации
-
-При подготовке внешнего описания проекта можно добавить скриншоты:
-
-- Swagger UI на `/docs`;
-- ответ endpoint-а `/health`;
-- зеленый GitHub Actions workflow;
-- запущенный Docker Compose.
-
 ## Возможные будущие улучшения
 
-- Добавить `pytest-cov` и публиковать coverage в CI.
 - Добавить сравнение нескольких моделей.
+- Отдавать метрики в формате Prometheus (`/metrics`) вместо JSON в `/health`.
 - Сделать простой monitoring dashboard или экспорт monitoring report.
-- Добавить скриншоты в финальную документацию после ручной проверки.
+- Публиковать Docker image в registry из CI.
 
 ## Статус проекта
 
@@ -467,6 +534,6 @@ docker compose build
 - Docker;
 - CI/CD;
 - monitoring;
+- линтеры, статическая типизация и pre-commit;
+- воспроизводимое окружение на Poetry;
 - documentation.
-
-Проект готов к публикации после добавления ссылки на GitHub-репозиторий и нужных скриншотов во внешнюю документацию.

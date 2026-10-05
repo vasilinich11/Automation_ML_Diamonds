@@ -1,12 +1,26 @@
+# VCS и CI
 .git
 .github
+.gitattributes
+.pre-commit-config.yaml
+
+# Виртуальные окружения и кеши (окружение создаётся заново внутри образа по poetry.lock)
 .venv
 venv
 __pycache__
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
 .pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# IDE и локальные настройки
+.vscode
+.idea
+.env
+
+# Локальные данные и артефакты: в образе модель обучается заново
 *.log
 mlruns
 data/raw/*.csv
@@ -15,3 +29,10 @@ models/*.joblib
 models/*.json
 models/*.pkl
 reports/monitoring/*.json
+
+# Не нужно для сборки образа
+tests
+presentation
+reports/figures
+docker-compose.yml
+Makefile
