@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     container_name: diamonds-api
+    environment:
+      DIAMONDS_LOG_LEVEL: ${DIAMONDS_LOG_LEVEL:-INFO}
     ports:
       - "8000:8000"
     healthcheck:
