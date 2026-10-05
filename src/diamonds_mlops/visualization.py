@@ -51,9 +51,7 @@ def plot_predicted_vs_actual(test_df: pd.DataFrame, model: Pipeline, output_path
     max_value = float(max(actual.max(), predicted.max()))
 
     fig, ax = plt.subplots(figsize=(6, 6))
-    ax.scatter(
-        actual, predicted, alpha=0.75, color=SCATTER_COLOR, edgecolor="white", linewidth=0.4
-    )
+    ax.scatter(actual, predicted, alpha=0.75, color=SCATTER_COLOR, edgecolor="white", linewidth=0.4)
     ax.plot(
         [min_value, max_value],
         [min_value, max_value],

@@ -68,4 +68,6 @@ def test_infrastructure_metrics_have_expected_keys() -> None:
     metrics = get_infrastructure_metrics()
 
     assert set(metrics) == {"cpu_percent", "ram_percent", "disk_percent"}
-    assert all(0.0 <= value <= 100.0 for value in metrics.values())
+    assert 0.0 <= metrics["cpu_percent"] <= 100.0
+    assert 0.0 <= metrics["ram_percent"] <= 100.0
+    assert 0.0 <= metrics["disk_percent"] <= 100.0

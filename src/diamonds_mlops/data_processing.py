@@ -190,7 +190,9 @@ def split_and_save(
     train_df.to_csv(output_dir / TRAIN_FILE, index=False)
     test_df.to_csv(output_dir / TEST_FILE, index=False)
     data.to_csv(output_dir / FULL_FILE, index=False)
-    logger.info("Saved processed data to %s: train=%d, test=%d", output_dir, len(train_df), len(test_df))
+    logger.info(
+        "Saved processed data to %s: train=%d, test=%d", output_dir, len(train_df), len(test_df)
+    )
     return DataSplit(train=train_df, test=test_df)
 
 
@@ -210,4 +212,3 @@ def run_data_pipeline(
         raise DataValidationError(msg)
     featured = add_features(cleaned)
     return split_and_save(featured, output_dir, settings=settings)
-

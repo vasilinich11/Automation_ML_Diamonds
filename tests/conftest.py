@@ -26,7 +26,7 @@ def _reset_settings_cache() -> Iterator[None]:
 def settings(tmp_path: Path) -> Settings:
     """Настройки, у которых все артефакты лежат во временном каталоге теста."""
     return Settings(
-        _env_file=None,  # type: ignore[call-arg]
+        _env_file=None,
         project_root=tmp_path,
         sample_rows=120,
         n_estimators=20,

@@ -31,7 +31,11 @@ def test_monitor_command_prints_metrics(
 ) -> None:
     assert main(["monitor"]) == 0
 
-    assert set(json.loads(capsys.readouterr().out)) == {"cpu_percent", "ram_percent", "disk_percent"}
+    assert set(json.loads(capsys.readouterr().out)) == {
+        "cpu_percent",
+        "ram_percent",
+        "disk_percent",
+    }
 
 
 def test_figures_command_creates_images(
@@ -43,7 +47,9 @@ def test_figures_command_creates_images(
 
     paths = [Path(path) for path in json.loads(capsys.readouterr().out)]
     assert len(paths) == 3
-    assert all(path.exists() and path.parent == project_root / "reports" / "figures" for path in paths)
+    assert all(
+        path.exists() and path.parent == project_root / "reports" / "figures" for path in paths
+    )
 
 
 def test_command_is_required() -> None:

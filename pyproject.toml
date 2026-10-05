@@ -1,0 +1,150 @@
+[project]
+name = "diamonds-mlops"
+version = "1.1.0"
+description = "MLOps-проект: предсказание стоимости бриллиантов (ETL, обучение, FastAPI, мониторинг)"
+authors = [{ name = "Automation ML Diamonds contributors" }]
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "pandas (>=2.3,<2.4)",
+    "numpy (>=2.2,<2.4)",
+    "scikit-learn (>=1.7,<1.9)",
+    "joblib (>=1.5,<1.6)",
+    "fastapi (>=0.115,<0.128)",
+    "uvicorn[standard] (>=0.34,<0.41)",
+    "pydantic (>=2.9,<3.0)",
+    "pydantic-settings (>=2.6,<3.0)",
+    "psutil (>=7.0,<8.0)",
+]
+
+[project.scripts]
+diamonds = "diamonds_mlops.cli:main"
+
+[project.urls]
+repository = "https://github.com/W1llAnn/Automation_ML_Diamonds"
+
+[tool.poetry]
+requires-poetry = ">=2.0"
+packages = [{ include = "diamonds_mlops", from = "src" }]
+
+# Графики для отчёта: нужны локально, но не нужны API в production-образе.
+[tool.poetry.group.viz.dependencies]
+matplotlib = ">=3.9,<3.11"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.4,<9.0"
+pytest-cov = ">=6.0,<8.0"
+httpx = ">=0.28,<0.29"
+ruff = "0.16.10"
+mypy = ">=1.18,<3.0"
+pandas-stubs = ">=2.3,<2.4"
+types-psutil = ">=7.0"
+pre-commit = ">=4.0,<5.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# ---------------------------------------------------------------------------
+# Ruff: линтер (замена flake8 + isort + pyupgrade + bandit и др.) и форматтер (замена black)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "N",        # pep8-naming
+    "UP",       # pyupgrade
+    "B",        # flake8-bugbear
+    "A",        # flake8-builtins
+    "C4",       # flake8-comprehensions
+    "S",        # flake8-bandit (безопасность)
+    "BLE",      # blind except
+    "SIM",      # flake8-simplify
+    "RET",      # flake8-return
+    "PT",       # flake8-pytest-style
+    "PTH",      # pathlib вместо os.path
+    "ERA",      # закомментированный код
+    "PL",       # pylint
+    "NPY",      # numpy
+    "PD",       # pandas-vet
+    "PERF",     # производительность
+    "D",        # pydocstyle
+    "EM",       # сообщения исключений
+    "TID",      # запрет относительных импортов
+    "RUF",      # ruff-specific
+]
+ignore = [
+    "D100",     # docstring модуля обязателен не везде (тесты)
+    "D104",     # docstring пакета
+    "D105",     # docstring magic-методов
+    "D107",     # docstring __init__
+    "RUF001",   # кириллица в строках
+    "RUF002",   # кириллица в docstrings
+    "RUF003",   # кириллица в комментариях
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "D", "PLR2004", "PLC0415"]
+"src/diamonds_mlops/cli.py" = ["PLC0415"]  # ленивые импорты: matplotlib/uvicorn нужны не всем командам
+"src/diamonds_mlops/visualization.py" = ["E402"]  # matplotlib.use() до импорта pyplot
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.pylint]
+max-args = 6
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+# ---------------------------------------------------------------------------
+# Mypy: статическая проверка типов
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.11"
+files = ["src", "tests"]
+mypy_path = "src"
+strict = true
+warn_unreachable = true
+pretty = true
+show_error_codes = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "joblib.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+# ---------------------------------------------------------------------------
+# Pytest и coverage
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+
+[tool.coverage.run]
+source = ["diamonds_mlops"]
+branch = true
+omit = ["src/diamonds_mlops/__main__.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 85
+exclude_also = ["if __name__ == .__main__.:"]

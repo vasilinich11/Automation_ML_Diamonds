@@ -163,7 +163,9 @@ def detect_degradation(
     current_r2 = current_metrics.get("r2")
 
     rmse_degraded = bool(
-        base_rmse and current_rmse is not None and (current_rmse - base_rmse) / base_rmse > rmse_limit
+        base_rmse
+        and current_rmse is not None
+        and (current_rmse - base_rmse) / base_rmse > rmse_limit
     )
     r2_degraded = bool(
         base_r2 is not None and current_r2 is not None and base_r2 - current_r2 > r2_limit
